@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name "apple2bus")(type "Legacy")(uri "${KIPRJMOD}/apple2bus.lib")(options "")(descr ""))
+  (lib (name "microsd_spi_cd")(type "Legacy")(uri "${KIPRJMOD}/microsd_spi_cd.lib")(options "")(descr ""))
+)
