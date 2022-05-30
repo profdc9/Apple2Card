@@ -1,6 +1,8 @@
 *.o
 *.a
 *.zip
+*.lst
+*.po
 Ignore/
 
 # Temporary files
