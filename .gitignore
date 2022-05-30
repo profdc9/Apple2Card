@@ -1,6 +1,7 @@
 *.o
 *.a
-*.zip
+Gerber*.zip
+gerber*.zip
 *.lst
 *.po
 Ignore/

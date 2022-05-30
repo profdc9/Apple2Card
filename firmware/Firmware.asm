@@ -70,16 +70,16 @@ start:
 	asl  a
 	asl  a
 	asl  a
-	ora  #$08        ; add 8 to it so we can address from page $BF ($BFF8-$BFFB)
+	ora  #$88        ; add $88 to it so we can address from page $BF ($BFF8-$BFFB)
 	                 ; this works around 6502 phantom read
     tax
 
     lda  $BFFB,x     ; set register A control mode to 2
-    ora  #$C0    
+    ora  #$c0    
     sta  $BFFB,x     ; write to 82C55 mode register (mode 2 reg A, mode 0 reg B)
 
     ldy	 #$ff        ; lets send the command bytes directly to the Arduino
-    lda  #$AC        ; send this byte first as a magic byte
+    lda  #$ac        ; send this byte first as a magic byte
     bne  comsend
 combyte:
     lda  command,y   ; get byte
@@ -90,7 +90,7 @@ combyte2:
     bpl  combyte2    ; wait until its received (OBFA is high)
     iny
     cpy  #$06
-    bne  combyte     ; clock next byte
+    bne  combyte     ; send next byte
 
 waitresult:
     lda  $BFFA,x     ; wait until there's a byte available
