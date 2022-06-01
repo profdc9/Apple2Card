@@ -28,9 +28,7 @@
 	cpx  #$03    ;
 	cpx  #$3C    ;this one for older II's
 
-;zero out block numbers and buffer address
-
-	sty  buflo
+	sty  buflo      ;zero out block numbers and buffer address
 	sty  blklo
 	sty  blkhi
 	iny
