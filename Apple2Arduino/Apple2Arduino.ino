@@ -24,48 +24,25 @@ freely, subject to the following restrictions:
 #include <Arduino.h>
 #include "diskio.h"
 #include "mmc_avr.h"
-
-#define CS  10 
-#define CS2 9
-#define CS3 8
-
-#define MOSI 11
-#define MISO 12
-#define SCK 13
-
-#define DISABLE_RXTX_PINS() UCSR0B &= ~(_BV(RXEN0)|_BV(TXEN0))
-#define ENABLE_RXTX_PINS() UCSR0B |= (_BV(RXEN0)|_BV(TXEN0))
-
-#define DATAPORT_MODE_TRANS() DDRD = 0xFF
-#define DATAPORT_MODE_RECEIVE() DDRD = 0x00
-
-#define READ_DATAPORT() (PORTD)
-#define WRITE_DATAPORT(x) PORTD=(x)
-
-#define READ_OBFA() (PORTC & 0x01)
-#define READ_IBFA() (PORTC & 0x08)
-#define ACK_LOW() PORTC = _BV(2)
-#define ACK_HIGH() PORTC = _BV(1) | _BV(2)
-#define STB_LOW() PORTC = _BV(1)
-#define STB_HIGH() PORTC = _BV(1) | _BV(2)
-
-#define SLOT_STATE_NODEV 0
-#define SLOT_STATE_BLOCKDEV 1
-#define SLOT_STATE_FILEDEV 2
+#include "ff.h"
+#include "pindefs.h"
 
 uint8_t slot0_state = SLOT_STATE_NODEV;
 uint8_t slot0_fileno = 0;
 FIL     slot0file;
+FATFS   fs0;
 
 uint8_t slot1_state = SLOT_STATE_NODEV;
 uint8_t slot1_fileno = 0;
 FIL     slot1file;
+FATFS   fs1;
 
 void setup_pins(void)
 {
   PORTC = _BV(1) | _BV(2);
   DDRC = _BV(1) | _BV(2);
   PORTC = _BV(1) | _BV(2);
+  DISABLE_RXTX_PINS();
   DATAPORT_MODE_RECEIVE();
   WRITE_DATAPORT(0);
 }
@@ -74,24 +51,6 @@ void setup_serial(void)
 {
   Serial.begin(115200);
   DISABLE_RXTX_PINS();
-}
-
-void printbuf(const uint8_t *buf)
-{
-    for (int i=0;i<512;i++)
-    {
-      if ((i % 16) == 0)
-      {
-        Serial.println("");
-        if (i<16) Serial.print('0');
-        Serial.print(i,HEX);
-        Serial.print(": ");
-      }
-      if (buf[i] < 16) Serial.print('0');
-      Serial.print(buf[i],HEX);
-      Serial.print(' ');
-    }
-    Serial.println("");
 }
 
 #if 0
@@ -112,19 +71,32 @@ void test()
   f_close(&fdst);
   f_unmount("0:");
 }
-#endif
 
-void setup() {
-  setup_pins();
-  uint32_t sec = 814235;
+void printbuf(const uint8_t *buf)
+{
+    for (int i=0;i<512;i++)
+    {
+      if ((i % 16) == 0)
+      {
+        Serial.println("");
+        if (i<16) Serial.print('0');
+        Serial.print(i,HEX);
+        Serial.print(": ");
+      }
+      if (buf[i] < 16) Serial.print('0');
+      Serial.print(buf[i],HEX);
+      Serial.print(' ');
+    }
+    Serial.println("");
+}
+
+void test_sector()
+{
   uint8_t buf[512];
   uint8_t buf2[512];
   uint8_t buf3[512];
-  setup_serial();
-  ENABLE_RXTX_PINS();
-
-//  test();
-#if 0
+  uint32_t sec = 814235;
+  
   Serial.print("Initialize=");
   Serial.println(mmc_disk_initialize(),HEX); 
 
@@ -156,7 +128,44 @@ void setup() {
   Serial.print("Reading sector: ");
   Serial.println(mmc_disk_read(buf3,sec,1));
   printbuf(buf3);
+  Serial.print("Initialize=");
+  Serial.println(mmc_disk_initialize(),HEX); 
+
+  for (;;)
+  {
+    int er = mmc_disk_read(buf,sec,1);
+    if (er != 0)
+    {
+      Serial.print("error ");
+      Serial.println(er);
+    }
+  }
+  Serial.print("Reading sector: ");
+  Serial.println(mmc_disk_read(buf,sec,1));
+  printbuf(buf);
+
+  for (int i=0;i<512;i++) buf2[i] = i;
+
+  Serial.print("Writing sector: ");
+  Serial.println(mmc_disk_write(buf2,sec,1));
+
+  Serial.print("Reading sector: ");
+  Serial.println(mmc_disk_read(buf3,sec,1));
+  printbuf(buf3);
+
+  Serial.print("Writing sector: ");
+  Serial.println(mmc_disk_write(buf,sec,1));
+
+  Serial.print("Reading sector: ");
+  Serial.println(mmc_disk_read(buf3,sec,1));
+  printbuf(buf3);
+}
 #endif
+
+void setup()
+{
+  setup_pins();
+  setup_serial();
 }
 
 void write_dataport(uint8_t ch)
@@ -193,7 +202,10 @@ void get_unit_buf_blk(void)
   blk |= (((uint16_t)read_dataport()) << 8);
 }
 
-static char blockdev_filename[] = "X:BLKDEVXX.BIN\000";
+static char blockvolzero[] = "0:";
+static char blockvolone[] = "1:";
+
+static char blockdev_filename[] = "X:BLKDEVXX.BIN";
 
 uint8_t hex_digit(uint8_t ch)
 {
@@ -219,10 +231,13 @@ void check_status(void)
           slot1_state = SLOT_STATE_BLOCKDEV;
       } else
       {
-        set_blockdev_filename(slot1_fileno);
-        blockdev_filename[0] = '1';
-        if (f_open(&slot1file, blockdev_filename, FA_READ | FA_WRITE) == FR_OK)
-          slot1_state = SLOT_STATE_FILEDEV;
+        if (f_mount(&fs1,blockvolone,0) == FR_OK)
+        {
+          set_blockdev_filename(slot1_fileno);
+          blockdev_filename[0] = '1';
+          if (f_open(&slot1file, blockdev_filename, FA_READ | FA_WRITE) == FR_OK)
+            slot1_state = SLOT_STATE_FILEDEV;
+        }
       }
     }
   } else
@@ -235,10 +250,13 @@ void check_status(void)
           slot0_state = SLOT_STATE_BLOCKDEV;
       } else
       {
-        set_blockdev_filename(slot0_fileno);
-        blockdev_filename[0] = '0';
-        if (f_open(&slot0file, blockdev_filename, FA_READ | FA_WRITE) == FR_OK)
-          slot0_state = SLOT_STATE_FILEDEV;
+        if (f_mount(&fs1,blockvolzero,0) == FR_OK)
+        {
+          set_blockdev_filename(slot0_fileno);
+          blockdev_filename[0] = '0';
+          if (f_open(&slot0file, blockdev_filename, FA_READ | FA_WRITE) == FR_OK)
+            slot0_state = SLOT_STATE_FILEDEV;
+        }
       }
     }
   }
@@ -253,11 +271,13 @@ void unmount_drive(void)
       case SLOT_STATE_NODEV:
          return;
       case SLOT_STATE_BLOCKDEV:
-         slot1_state = SLOT_STATE_BLOCKDEV;
+         f_unmount(blockvolone);
+         slot1_state = SLOT_STATE_NODEV;
          return;
       case SLOT_STATE_FILEDEV:
          f_close(&slot1file);
-         slot1_state = SLOT_STATE_BLOCKDEV;
+         f_unmount(blockvolone);
+         slot1_state = SLOT_STATE_NODEV;
          return;
     }
   } else
@@ -267,11 +287,13 @@ void unmount_drive(void)
       case SLOT_STATE_NODEV:
          return;
       case SLOT_STATE_BLOCKDEV:
-         slot0_state = SLOT_STATE_BLOCKDEV;
+         f_unmount(blockvolzero);
+         slot0_state = SLOT_STATE_NODEV;
          return;
       case SLOT_STATE_FILEDEV:
          f_close(&slot0file);
-         slot0_state = SLOT_STATE_BLOCKDEV;
+         f_unmount(blockvolzero);
+         slot0_state = SLOT_STATE_NODEV;
          return;
     }  
   }
@@ -458,12 +480,13 @@ void do_command()
              break;
     case 3:  do_format();
              break;
-    default: write_dataport(0x07);
+    default: write_dataport(0x27);
              break;
   }
 }
 
-void loop() {
+void loop()
+{
   uint8_t instr = read_dataport();
   if (instr == 0xAC) do_command();
 }

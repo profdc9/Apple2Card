@@ -101,7 +101,8 @@ waitresult:
     rts
             
 noerror:
-    sta  uppage      ; keep track if we are in upper page
+    sta  uppage      ; keep track if we are in upper page (store 0 in uppage)
+	tay              ; (store 0 in y)
     lda  command
     bne  notstatus   ; not a status command
     
@@ -113,8 +114,6 @@ noerror:
 notstatus:
     cmp  #$01     
     bne  notread     ; not a read command
-read256:
-    ldy  #0          ; read 256 bytes
 readbytes:
     lda  $BFFA,x     ; wait until there's a byte available
     and  #$20
@@ -127,7 +126,7 @@ readbytes:
     bne  exit512     ; already read upper page
     inc  bufhi
     inc  uppage
-    bne  read256
+    bne  readbytes
 exit512:
     dec  bufhi       ; quit with no error
 quitok:
@@ -138,7 +137,6 @@ quitok:
 notread:              
     cmp  #$02         ; assume its an allowed format if not these others
     bne  quitok 
-    ldy  #$00
 writebytes:
     lda  (buflo),y    ; write a byte to the Arduino
     sta  $BFF8,x      
@@ -151,7 +149,7 @@ waitwrite:
     bne  exit512     ; already wrote upper page
     inc  bufhi
     inc  uppage
-    bne  notread
+    bne  writebytes
     
 ;macro for string with high-bit set
 .macro aschi str
