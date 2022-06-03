@@ -15,35 +15,35 @@
   wperr = $2B  ;write protect error
 
 ;for relocatable code, address to jump to instead of JSR absolute + RTS
-	knownRts   = $FF58
+    knownRts   = $FF58
 
-	.org  $C700
+   .org  $C700
   ;code is relocatable
   ; but set to $c700 for
   ; readability
 
 ;ID bytes for booting and drive detection
-	cpx  #$20    ;ID bytes for ProDOS and the
-	ldy  #$00    ; Apple Autostart ROM
-	cpx  #$03    ;
-	cpx  #$3C    ;this one for older II's
+    cpx  #$20    ;ID bytes for ProDOS and the
+    ldy  #$00    ; Apple Autostart ROM
+    cpx  #$03    ;
+    cpx  #$3C    ;this one for older II's
 
-	sty  buflo      ;zero out block numbers and buffer address
-	sty  blklo
-	sty  blkhi
-	iny
-	sty  command
+    sty  buflo      ;zero out block numbers and buffer address
+    sty  blklo
+    sty  blkhi
+    iny
+    sty  command
 
-	jsr  knownRts   ; call known RTS to get high byte to call address from stack
-	tsx
-	lda  $0100,x
-	sta  bufhi      ; address of beginning of rom 
-	
-	asl  a
-	asl  a
-	asl  a
-	asl  a
-	sta  unit       ; store unit number so Arduino knows what to load
+    jsr  knownRts   ; call known RTS to get high byte to call address from stack
+    tsx
+    lda  $0100,x
+    sta  bufhi      ; address of beginning of rom 
+    
+    asl  a
+    asl  a
+    asl  a
+    asl  a
+    sta  unit       ; store unit number so Arduino knows what to load
     
     ldy	 #<msg
 writemsg:
@@ -61,15 +61,15 @@ pushadr:
     pha
 
 start:
-	jsr  knownRts   ; call known RTS to get high byte to call address from stack
-	tsx
-	lda  $0100,x
-	asl  a
-	asl  a
-	asl  a
-	asl  a
-	ora  #$88        ; add $88 to it so we can address from page $BF ($BFF8-$BFFB)
-	                 ; this works around 6502 phantom read
+    jsr  knownRts   ; call known RTS to get high byte to call address from stack
+    tsx
+    lda  $0100,x
+    asl  a
+    asl  a
+    asl  a
+    asl  a
+    ora  #$88        ; add $88 to it so we can address from page $BF ($BFF8-$BFFB)
+                     ; this works around 6502 phantom read
     tax
 
     lda  $BFFB,x     ; set register A control mode to 2
@@ -102,7 +102,7 @@ waitresult:
             
 noerror:
     sta  uppage      ; keep track if we are in upper page (store 0 in uppage)
-	tay              ; (store 0 in y)
+    tay              ; (store 0 in y)
     lda  command
     bne  notstatus   ; not a status command
     
@@ -158,9 +158,9 @@ waitwrite:
 .endrep
 .endmacro
 
-msg:   aschi   "SD Interface (c)2022 Daniel L. Marks"
+msg:   aschi   "SD INTERFACE BY DL MARKS"
 end:
-.byte	 0
+.byte    0
 
 ; These bytes need to be at the top of the 256 byte firmware as ProDOS
 ; uses these to find the entry point and drive capabilities
@@ -170,5 +170,5 @@ end:
 .endrepeat
 
 .byte   $00,$00  ;0000 blocks = check status
-.byte   $27      ;bit 0=read 1=status
+.byte   $A7      ;bit 0=read 1=status
 .byte  <start    ;low byte of entry

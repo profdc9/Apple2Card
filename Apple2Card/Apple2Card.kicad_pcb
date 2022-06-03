@@ -3873,7 +3873,7 @@
   (gr_text "+5V" (at 153.18 29 90) (layer "F.SilkS") (tstamp 4cd8b4d7-bcf7-4afd-b28d-e5e918c127f4)
     (effects (font (size 1 1) (thickness 0.15)))
   )
-  (gr_text "DAN'S APPLE II\nARDUINO INTERFACE\nVERSION 1\nCC-BY-SA 4.0" (at 176.53 33.528) (layer "F.SilkS") (tstamp 5087bf57-266c-4a81-aa62-6027dc2ad225)
+  (gr_text "DAN ][ CONTROLLER\nARDUINO INTERFACE\nVERSION 1\nCC-BY-SA 4.0" (at 176.53 33.528) (layer "F.SilkS") (tstamp 5087bf57-266c-4a81-aa62-6027dc2ad225)
     (effects (font (size 2 2) (thickness 0.25)))
   )
   (gr_text "GND" (at 179.74 78.65 90) (layer "F.SilkS") (tstamp 54839705-90da-4a4c-90f1-f31dbbc71e8e)

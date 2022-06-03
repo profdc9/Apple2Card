@@ -48,8 +48,4 @@ freely, subject to the following restrictions:
 #define STB_LOW() PORTC = _BV(1)
 #define STB_HIGH() PORTC = _BV(1) | _BV(2)
 
-#define SLOT_STATE_NODEV 0
-#define SLOT_STATE_BLOCKDEV 1
-#define SLOT_STATE_FILEDEV 2
-
 #endif _PINDEFS_H
