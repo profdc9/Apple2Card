@@ -1,7 +1,6 @@
 
 ;temp variables becasue 6502 only has 3 registers
-	uppage = $FE
-	regoffset = $FF   
+   uppage = $FE
 
 ;ProDOS defines
   command = $42   ;ProDOS command
@@ -158,7 +157,7 @@ waitwrite:
 .endrep
 .endmacro
 
-msg:   aschi   "SD INTERFACE BY DL MARKS"
+msg:   aschi   "DAN ][ PRESS ENTER"
 end:
 .byte    0
 
