@@ -35,7 +35,14 @@ freely, subject to the following restrictions:
 #ifdef SOFTWARE_SERIAL
 #include <SoftwareSerial.h>
 SoftwareSerial softSerial(SOFTWARE_SERIAL_RX,SOFTWARE_SERIAL_TX);
+#define ENABLE_SERIAL_PINS()
+#define DISABLE_SERIAL_PINS()
+#else
+#define ENABLE_SERIAL_PINS() ENABLE_RXTX_PINS()
+#define DISABLE_SERIAL_PINS() DISABLE_RXTX_PINS()
 #endif
+
+Stream *serial;
 
 #define SLOT_STATE_NODEV 0
 #define SLOT_STATE_BLOCKDEV 1
@@ -69,8 +76,16 @@ void setup_pins(void)
 
 void setup_serial(void)
 {
-  Serial.begin(115200);
-  DISABLE_RXTX_PINS();
+#ifdef SOFTWARE_SERIAL
+  serial = &softSerial;
+  softSerial.begin(9600);
+  pinMode(SOFTWARE_SERIAL_RX,INPUT);
+  pinMode(SOFTWARE_SERIAL_TX,OUTPUT);
+#else
+  serial = &Serial;
+  Serial.begin(9600);
+#endif
+  DISABLE_SERIAL_PINS();
 }
 
 void write_dataport(uint8_t ch)
@@ -536,37 +551,31 @@ void setup()
 {
   setup_pins();
   setup_serial();
-#ifdef SOFTWARE_SERIAL
-  pinMode(SOFTWARE_SERIAL_RX,INPUT);
-  pinMode(SOFTWARE_SERIAL_TX,OUTPUT);
-  softSerial.begin(9600);
-#endif
-  ENABLE_RXTX_PINS();
 
-#if 1
+  ENABLE_SERIAL_PINS();
+
   unit = 0;
   check_status();
   unit = 0x80;
   check_status();
 
-  ENABLE_RXTX_PINS();
-  Serial.print("d=");
-  Serial.print(sizeof(fs));
-  Serial.print(" f=");
-  Serial.print(freeRam());
-  Serial.print(" s=");
-  Serial.print(slot0_state);
-  Serial.print(" ");
-  Serial.println(slot1_state);
-  Serial.flush();
-#endif
-  DISABLE_RXTX_PINS();
+  serial->println("0000");
+  serial->print("d=");
+  serial->print(sizeof(fs));
+  serial->print(" f=");
+  serial->print(freeRam());
+  serial->print(" s=");
+  serial->print(slot0_state);
+  serial->print(" ");
+  serial->println(slot1_state);
+  serial->flush();
+
+  DISABLE_SERIAL_PINS();
   DATAPORT_MODE_RECEIVE();
 }
 
 void loop()
 {
-  softSerial.println("test\n");
 #if 0
   delay(100);
   DISABLE_RXTX_PINS();  
