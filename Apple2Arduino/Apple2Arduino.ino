@@ -32,6 +32,11 @@ freely, subject to the following restrictions:
 #include "ff.h"
 #include "pindefs.h"
 
+#ifdef SOFTWARE_SERIAL
+#include <SoftwareSerial.h>
+SoftwareSerial softSerial(SOFTWARE_SERIAL_RX,SOFTWARE_SERIAL_TX);
+#endif
+
 #define SLOT_STATE_NODEV 0
 #define SLOT_STATE_BLOCKDEV 1
 #define SLOT_STATE_WIDEDEV 2
@@ -44,13 +49,19 @@ uint8_t slot0_state = SLOT_STATE_NODEV;
 uint8_t slot0_fileno = 0;
 
 uint8_t slot1_state = SLOT_STATE_NODEV;
-uint8_t slot1_fileno = 1;
+uint8_t slot1_fileno = 0;
+
+extern "C" {
+  void write_string(const char *c)
+  {
+    Serial.print(c);
+    Serial.flush();
+  }
+}
 
 void setup_pins(void)
 {
-  PORTC = _BV(1) | _BV(2);
-  DDRC = _BV(1) | _BV(2);
-  PORTC = _BV(1) | _BV(2);
+  INITIALIZE_CONTROL_PORT();
   DISABLE_RXTX_PINS();
   DATAPORT_MODE_RECEIVE();
   WRITE_DATAPORT(0);
@@ -103,7 +114,7 @@ static char blockdev_filename[] = "X:BLKDEVXX.PO";
 
 uint8_t hex_digit(uint8_t ch)
 {
-  if (ch < 10) return ch;
+  if (ch < 10) return ch + '0';
   return ch - 10 + 'A';
 }
 
@@ -157,6 +168,7 @@ void check_status(void)
         }
       } else if (slot0_fileno == 0)
       {
+        Serial.println("initializing!");
         if (disk_initialize(0) == 0)
           slot0_state = SLOT_STATE_BLOCKDEV;
       } else
@@ -513,17 +525,6 @@ void test_sector()
 }
 #endif
 
-void setup()
-{
-  setup_pins();
-  setup_serial();
-
-  unit = 0;
-  check_status();
-  unit = 0x80;
-  check_status();
-}
-
 int freeRam () 
 {
   extern int __heap_start, *__brkval; 
@@ -531,21 +532,45 @@ int freeRam ()
   return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
-void loop()
+void setup()
 {
-#if 0
+  setup_pins();
+  setup_serial();
+#ifdef SOFTWARE_SERIAL
+  pinMode(SOFTWARE_SERIAL_RX,INPUT);
+  pinMode(SOFTWARE_SERIAL_TX,OUTPUT);
+  softSerial.begin(9600);
+#endif
+  ENABLE_RXTX_PINS();
+
+#if 1
+  unit = 0;
+  check_status();
+  unit = 0x80;
+  check_status();
+
   ENABLE_RXTX_PINS();
   Serial.print("d=");
-  Serial.println(sizeof(fs));
-  Serial.print("f=");
-  Serial.println(freeRam());
-  Serial.print("s=");
+  Serial.print(sizeof(fs));
+  Serial.print(" f=");
+  Serial.print(freeRam());
+  Serial.print(" s=");
   Serial.print(slot0_state);
   Serial.print(" ");
   Serial.println(slot1_state);
+  Serial.flush();
 #endif
+  DISABLE_RXTX_PINS();
+  DATAPORT_MODE_RECEIVE();
+}
+
+void loop()
+{
+  softSerial.println("test\n");
+#if 0
   delay(100);
   DISABLE_RXTX_PINS();  
   uint8_t instr = read_dataport();
   if (instr == 0xAC) do_command();
+#endif
 }

@@ -15,9 +15,10 @@
 #include <avr/io.h>
 #include "diskio.h"
 #include "mmc_avr.h"
+#include "pindefs.h"
 
 /* Peripheral controls (Platform dependent) */
-#define CS_LOW()		do { PORTB &= (slotno ?  ~0x02 : ~0x04);  } while (0) /* Set MMC_CS = low */
+#define CS_LOW()		do { PORTB &= (slotno ?  ~0x02 : ~0x04); } while (0) /* Set MMC_CS = low */
 #define	CS_HIGH()		do { PORTB |= 0x07; } while (0) /* Set MMC_CS = high */
 #define MMC_CD			(1)	/* Test if card detected.   yes:true, no:false, default:true */
 #define MMC_WP			(0)	/* Test if write protected. yes:true, no:false, default:false */
@@ -73,6 +74,7 @@ static
 void power_on (void)
 {
 	cli();
+  PORTB = 0x07;
 	DDRB |= 0x07;
 	PORTB = 0x07;
 	SPCR = _BV(SPE) | _BV(MSTR);
@@ -85,8 +87,9 @@ void power_on (void)
 static
 void power_off (void)
 {
+
 	cli();
-	SPCR &= ~_BV(SPE);
+	SPCR = 0;
 	DDRB &= ~0x3F;
 	sei(); 
 }
@@ -152,7 +155,7 @@ int wait_ready (	/* 1:Ready, 0:Timeout */
 )
 {
 	BYTE d;
-    uint16_t intime;
+  uint16_t intime;
 
 	intime = millis();
 	do {
@@ -320,16 +323,19 @@ DSTATUS mmc_disk_initialize (void)
 
 	power_on();							/* Turn on the socket power */
 	FCLK_SLOW();
-	for (n = 10; n; n--) xchg_spi(0xFF);	/* 80 dummy clocks */
+ for (n = 10; n; n--) xchg_spi(0xFF);	/* 80 dummy clocks */
 
 	ty = 0;
 	if (send_cmd(CMD0, 0) == 1) {			/* Put the card SPI mode */
 	    uint16_t intime = millis(), curtime;
+      
 		if (send_cmd(CMD8, 0x1AA) == 1) {	/* Is the card SDv2? */
 			for (n = 0; n < 4; n++) ocr[n] = xchg_spi(0xFF);	/* Get trailing return value of R7 resp */
+
 			if (ocr[2] == 0x01 && ocr[3] == 0xAA) {				/* The card can work at vdd range of 2.7-3.6V */
 				while ((((int16_t)(((uint16_t)millis())-intime)) < 1000) && send_cmd(ACMD41, 1UL << 30));
  				/* Wait for leaving idle state (ACMD41 with HCS bit) */
+
 				if ((((int16_t)(((uint16_t)millis())-intime)) < 1000) && send_cmd(CMD58, 0) == 0) {		/* Check CCS bit in the OCR */
 					for (n = 0; n < 4; n++) ocr[n] = xchg_spi(0xFF);
 					ty = (ocr[0] & 0x40) ? CT_SDC2 | CT_BLOCK : CT_SDC2;	/* Check if the card is SDv2 */
@@ -346,6 +352,7 @@ DSTATUS mmc_disk_initialize (void)
 				ty = 0;
 		}
 	}
+
 	CardType[slotno] = ty;
 	deselect();
 

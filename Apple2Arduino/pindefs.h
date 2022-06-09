@@ -32,8 +32,13 @@ freely, subject to the following restrictions:
 #define MISO 12
 #define SCK 13
 
-#define DISABLE_RXTX_PINS() UCSR0B &= ~(_BV(RXEN0)|_BV(TXEN0))
-#define ENABLE_RXTX_PINS() UCSR0B |= (_BV(RXEN0)|_BV(TXEN0))
+#define SOFTWARE_SERIAL
+#define SOFTWARE_SERIAL_RX A4
+#define SOFTWARE_SERIAL_TX A5
+
+#define DISABLE_RXTX_PINS() UCSR0B &= ~(_BV(RXEN0)|_BV(TXEN0)|_BV(RXCIE0)|_BV(UDRIE0))
+#define ENABLE_RXTX_PINS() UCSR0B |= (_BV(RXEN0)|_BV(TXEN0)|_BV(RXCIE0)|_BV(UDRIE0))
+#define WAIT_TX() while ((UCSR0A & _BV(TXC0) == 0)
 
 #define DATAPORT_MODE_TRANS() DDRD = 0xFF
 #define DATAPORT_MODE_RECEIVE() DDRD = 0x00
@@ -47,5 +52,11 @@ freely, subject to the following restrictions:
 #define ACK_HIGH() PORTC = _BV(1) | _BV(2)
 #define STB_LOW() PORTC = _BV(1)
 #define STB_HIGH() PORTC = _BV(1) | _BV(2)
+
+#define INITIALIZE_CONTROL_PORT() do { \
+  PORTC = _BV(1) | _BV(2); \
+  DDRC = _BV(1) | _BV(2); \
+  PORTC = _BV(1) | _BV(2); \
+} while (0) 
 
 #endif _PINDEFS_H

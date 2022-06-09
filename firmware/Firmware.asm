@@ -251,7 +251,7 @@ insidejump:
 getcard2key:
     lda  $c000
     bpl  getcard2key
-	sta  $c010
+    sta  $c010
     cmp  #'0'+128
     bcc  getcard2key
     cmp  #'9'+128+1
