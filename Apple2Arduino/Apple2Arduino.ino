@@ -32,17 +32,13 @@ freely, subject to the following restrictions:
 #include "ff.h"
 #include "pindefs.h"
 
-#ifdef SOFTWARE_SERIAL
+#undef DEBUG_SERIAL
+
+#ifdef DEBUG_SERIAL
 #include <SoftwareSerial.h>
 SoftwareSerial softSerial(SOFTWARE_SERIAL_RX,SOFTWARE_SERIAL_TX);
-#define ENABLE_SERIAL_PINS()
-#define DISABLE_SERIAL_PINS()
-#else
-#define ENABLE_SERIAL_PINS() ENABLE_RXTX_PINS()
-#define DISABLE_SERIAL_PINS() DISABLE_RXTX_PINS()
+#define SERIALPORT() (&softSerial)
 #endif
-
-Stream *serial;
 
 #define SLOT_STATE_NODEV 0
 #define SLOT_STATE_BLOCKDEV 1
@@ -56,13 +52,15 @@ uint8_t slot0_state = SLOT_STATE_NODEV;
 uint8_t slot0_fileno = 0;
 
 uint8_t slot1_state = SLOT_STATE_NODEV;
-uint8_t slot1_fileno = 0;
+uint8_t slot1_fileno = 1;
 
 extern "C" {
   void write_string(const char *c)
   {
-    Serial.print(c);
-    Serial.flush();
+#ifdef DEBUG_SERIAL
+    SERIALPORT()->print(c);
+    SERIALPORT()->flush();
+#endif
   }
 }
 
@@ -71,21 +69,19 @@ void setup_pins(void)
   INITIALIZE_CONTROL_PORT();
   DISABLE_RXTX_PINS();
   DATAPORT_MODE_RECEIVE();
-  WRITE_DATAPORT(0);
 }
 
 void setup_serial(void)
 {
+  Serial.end();
+  DISABLE_RXTX_PINS();
+#ifdef DEBUG_SERIAL
 #ifdef SOFTWARE_SERIAL
-  serial = &softSerial;
   softSerial.begin(9600);
   pinMode(SOFTWARE_SERIAL_RX,INPUT);
   pinMode(SOFTWARE_SERIAL_TX,OUTPUT);
-#else
-  serial = &Serial;
-  Serial.begin(9600);
 #endif
-  DISABLE_SERIAL_PINS();
+#endif
 }
 
 void write_dataport(uint8_t ch)
@@ -100,13 +96,13 @@ void write_dataport(uint8_t ch)
 
 uint8_t read_dataport(void)
 {
-  uint8_t instr;
+  uint8_t byt;
 
   while (READ_OBFA() != 0);
   ACK_LOW();
-  instr = READ_DATAPORT();
+  byt = READ_DATAPORT();
   ACK_HIGH();
-  return instr;
+  return byt;
 }
 
 static uint8_t unit;
@@ -116,10 +112,22 @@ static uint16_t blk;
 void get_unit_buf_blk(void)
 {
   unit = read_dataport();
+#ifdef DEBUG_SERIAL
+  SERIALPORT()->print("0000 unit=");
+  SERIALPORT()->println(unit,HEX);
+#endif
   buf = read_dataport();
   buf |= (((uint16_t)read_dataport()) << 8);
+#ifdef DEBUG_SERIAL
+  SERIALPORT()->print("0000 buf=");
+  SERIALPORT()->println(buf,HEX);
+#endif
   blk = read_dataport();
   blk |= (((uint16_t)read_dataport()) << 8);
+#ifdef DEBUG_SERIAL
+  SERIALPORT()->print("0000 blk=");
+  SERIALPORT()->println(blk,HEX);
+#endif
 }
 
 static char blockvolzero[] = "0:";
@@ -165,7 +173,9 @@ void check_status(void)
             set_blockdev_filename(slot1_fileno);
             blockdev_filename[0] = '1';
             if (f_open(&slotfile, blockdev_filename, FA_READ | FA_WRITE) == FR_OK)
+            {
               slot1_state = SLOT_STATE_FILEDEV;
+            } 
           }
         }
       }
@@ -183,7 +193,6 @@ void check_status(void)
         }
       } else if (slot0_fileno == 0)
       {
-        Serial.println("initializing!");
         if (disk_initialize(0) == 0)
           slot0_state = SLOT_STATE_BLOCKDEV;
       } else
@@ -257,7 +266,6 @@ uint8_t check_unit_nodev(void)
       return 0;
     } 
   }
-  write_dataport(0x00);
   return 1;
 }
 
@@ -265,14 +273,15 @@ void do_status(void)
 {
   get_unit_buf_blk();
   check_status();
-  check_unit_nodev();
+  if (check_unit_nodev())
+     write_dataport(0x00);
 }
 
 static uint32_t blockloc;
 
 uint32_t calculate_block_location(uint8_t voltype)
 {
-  uint8_t unitshift = unit & (voltype == SLOT_STATE_WIDEDEV) ? 0xF0 : 0x70;
+  uint8_t unitshift = unit & ((voltype == SLOT_STATE_WIDEDEV) ? 0xF0 : 0x70);
   blockloc = ((uint32_t)blk) | (((uint32_t)(unitshift)) << 12);
 }
 
@@ -288,7 +297,7 @@ void do_read(void)
   
   get_unit_buf_blk();
   check_status();
-  if (check_unit_nodev() == 0) return;  
+  if (check_unit_nodev() == 0) return;
   if (unit & 0x80)
   {
     switch (slot1_state)
@@ -337,7 +346,8 @@ void do_read(void)
            }
            break;
      }
-  }               
+  }   
+  write_dataport(0x00);            
   DATAPORT_MODE_TRANS();
   for (uint16_t i=0;i<512;i++)
   {
@@ -358,6 +368,7 @@ void do_write(void)
   check_status();
 
   if (check_unit_nodev() == 0) return;
+  write_dataport(0x00);            
 
   for (uint16_t i=0;i<512;i++)
   {
@@ -413,9 +424,29 @@ void do_format(void)
   write_dataport(0x00);
 }
 
+void do_set_volume(void)
+{
+  get_unit_buf_blk();
+  unit = 0;
+  unmount_drive();
+  unit = 0x80;
+  unmount_drive();
+  slot0_fileno = blk & 0xFF;
+  slot1_fileno = (blk >> 8);
+  unit = 0;
+  check_status();
+  unit = 0x80;
+  check_status();
+  write_dataport(0x00);
+}
+
 void do_command()
 {
   uint8_t cmd = read_dataport();
+#ifdef DEBUG_SERIAL
+  SERIALPORT()->print("0000 cmd=");
+  SERIALPORT()->println(cmd,HEX);
+#endif
   switch (cmd)
   {
     case 0:  do_status();
@@ -426,119 +457,13 @@ void do_command()
              break;
     case 3:  do_format();
              break;
+    case 4:  do_set_volume();
+             break;
+
     default: write_dataport(0x27);
              break;
   }
 }
-
-#if 0
-FATFS fs0;
-
-void test()
-{
-  delay(1000);
-  FRESULT fr;
-  FIL fdst;
-  Serial.print("mount=");
-  Serial.println(f_mount(&fs0,"0:",0));
-  Serial.print("create=");
-  Serial.println(fr = f_open(&fdst, "0:file.bin", FA_WRITE | FA_CREATE_ALWAYS));
-  f_close(&fdst);
-  Serial.print("read=");
-  Serial.println(fr = f_open(&fdst, "0:file.bin", FA_READ));
-  f_close(&fdst);
-  f_unmount("0:");
-}
-
-void printbuf(const uint8_t *buf)
-{
-    for (int i=0;i<512;i++)
-    {
-      if ((i % 16) == 0)
-      {
-        Serial.println("");
-        if (i<16) Serial.print('0');
-        Serial.print(i,HEX);
-        Serial.print(": ");
-      }
-      if (buf[i] < 16) Serial.print('0');
-      Serial.print(buf[i],HEX);
-      Serial.print(' ');
-    }
-    Serial.println("");
-}
-
-void test_sector()
-{
-  uint8_t buf[512];
-  uint8_t buf2[512];
-  uint8_t buf3[512];
-  uint32_t sec = 814235;
-  
-  Serial.print("Initialize=");
-  Serial.println(mmc_disk_initialize(),HEX); 
-
-  for (;;)
-  {
-    int er = mmc_disk_read(buf,sec,1);
-    if (er != 0)
-    {
-      Serial.print("error ");
-      Serial.println(er);
-    }
-  }
-  Serial.print("Reading sector: ");
-  Serial.println(mmc_disk_read(buf,sec,1));
-  printbuf(buf);
-
-  for (int i=0;i<512;i++) buf2[i] = i;
-
-  Serial.print("Writing sector: ");
-  Serial.println(mmc_disk_write(buf2,sec,1));
-
-  Serial.print("Reading sector: ");
-  Serial.println(mmc_disk_read(buf3,sec,1));
-  printbuf(buf3);
-
-  Serial.print("Writing sector: ");
-  Serial.println(mmc_disk_write(buf,sec,1));
-
-  Serial.print("Reading sector: ");
-  Serial.println(mmc_disk_read(buf3,sec,1));
-  printbuf(buf3);
-  Serial.print("Initialize=");
-  Serial.println(mmc_disk_initialize(),HEX); 
-
-  for (;;)
-  {
-    int er = mmc_disk_read(buf,sec,1);
-    if (er != 0)
-    {
-      Serial.print("error ");
-      Serial.println(er);
-    }
-  }
-  Serial.print("Reading sector: ");
-  Serial.println(mmc_disk_read(buf,sec,1));
-  printbuf(buf);
-
-  for (int i=0;i<512;i++) buf2[i] = i;
-
-  Serial.print("Writing sector: ");
-  Serial.println(mmc_disk_write(buf2,sec,1));
-
-  Serial.print("Reading sector: ");
-  Serial.println(mmc_disk_read(buf3,sec,1));
-  printbuf(buf3);
-
-  Serial.print("Writing sector: ");
-  Serial.println(mmc_disk_write(buf,sec,1));
-
-  Serial.print("Reading sector: ");
-  Serial.println(mmc_disk_read(buf3,sec,1));
-  printbuf(buf3);
-}
-#endif
 
 int freeRam () 
 {
@@ -552,34 +477,29 @@ void setup()
   setup_pins();
   setup_serial();
 
-  ENABLE_SERIAL_PINS();
-
   unit = 0;
   check_status();
   unit = 0x80;
   check_status();
 
-  serial->println("0000");
-  serial->print("d=");
-  serial->print(sizeof(fs));
-  serial->print(" f=");
-  serial->print(freeRam());
-  serial->print(" s=");
-  serial->print(slot0_state);
-  serial->print(" ");
-  serial->println(slot1_state);
-  serial->flush();
+#ifdef DEBUG_SERIAL
+  SERIALPORT()->println("0000");
+  SERIALPORT()->print("d=");
+  SERIALPORT()->print(sizeof(fs));
+  SERIALPORT()->print(" f=");
+  SERIALPORT()->print(freeRam());
+  SERIALPORT()->print(" s=");
+  SERIALPORT()->print(slot0_state);
+  SERIALPORT()->print(" ");
+  SERIALPORT()->println(slot1_state);
+  SERIALPORT()->flush();
+#endif
 
-  DISABLE_SERIAL_PINS();
   DATAPORT_MODE_RECEIVE();
 }
 
 void loop()
 {
-#if 0
-  delay(100);
-  DISABLE_RXTX_PINS();  
   uint8_t instr = read_dataport();
   if (instr == 0xAC) do_command();
-#endif
 }

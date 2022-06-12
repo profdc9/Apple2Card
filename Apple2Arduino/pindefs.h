@@ -41,22 +41,29 @@ freely, subject to the following restrictions:
 #define WAIT_TX() while ((UCSR0A & _BV(TXC0) == 0)
 
 #define DATAPORT_MODE_TRANS() DDRD = 0xFF
-#define DATAPORT_MODE_RECEIVE() DDRD = 0x00
+#define DATAPORT_MODE_RECEIVE() do { PORTD = 0x00; DDRD = 0x00; } while (0)
 
-#define READ_DATAPORT() (PORTD)
+#define READ_DATAPORT() (PIND)
 #define WRITE_DATAPORT(x) PORTD=(x)
 
-#define READ_OBFA() (PORTC & 0x01)
-#define READ_IBFA() (PORTC & 0x08)
-#define ACK_LOW() PORTC = _BV(2)
-#define ACK_HIGH() PORTC = _BV(1) | _BV(2)
-#define STB_LOW() PORTC = _BV(1)
-#define STB_HIGH() PORTC = _BV(1) | _BV(2)
+#define READ_OBFA() (PINC & 0x08)
+#define READ_IBFA() (PINC & 0x02)
+#define ACK_LOW_SINGLE() PORTC &= ~_BV(2)
+#define ACK_HIGH_SINGLE() PORTC |= _BV(2)
+#define STB_LOW_SINGLE() PORTC &= ~_BV(0)
+#define STB_HIGH_SINGLE() PORTC |= _BV(0)
+
+/* Needed to slow down data send for 82C55 */
+#define ACK_LOW() do { ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); } while (0)
+#define ACK_HIGH() do { ACK_HIGH_SINGLE();  } while (0)
+#define STB_LOW() do { STB_LOW_SINGLE(); STB_LOW_SINGLE(); STB_LOW_SINGLE(); STB_LOW_SINGLE(); } while (0)
+#define STB_HIGH() do { STB_HIGH_SINGLE(); } while (0)
 
 #define INITIALIZE_CONTROL_PORT() do { \
-  PORTC = _BV(1) | _BV(2); \
-  DDRC = _BV(1) | _BV(2); \
-  PORTC = _BV(1) | _BV(2); \
+  PORTC |= (_BV(0) | _BV(2)); \
+  DDRC |= (_BV(0) | _BV(2)); \
+  DDRC &= ~(_BV(1) | _BV(3)); \
+  PORTC |= (_BV(0) | _BV(2)); \
 } while (0) 
 
 #endif _PINDEFS_H

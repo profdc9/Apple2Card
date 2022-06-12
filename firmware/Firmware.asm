@@ -1,6 +1,8 @@
 
 ;temp variables becasue 6502 only has 3 registers
    uppage = $FE
+;for relocatable code, address to jump to instead of JSR absolute + RTS
+    knownRts   = $FF
 
 ;ProDOS defines
   command = $42   ;ProDOS command
@@ -12,9 +14,6 @@
   ioerr = $27  ;I/O error code
   nodev = $28  ;no device connected
   wperr = $2B  ;write protect error
-
-;for relocatable code, address to jump to instead of JSR absolute + RTS
-    knownRts   = $FF58
 
    .org  $C700
   ;code is relocatable
@@ -30,14 +29,16 @@ idbytes:
     bne  boot
 jumpbank:
     sta  $bffb,x ; this is called to switch between rom banks
-    ldy  #0      ; try booting again
 boot:
-    sty  buflo      ;zero out block numbers and buffer address
+    ldy  #0         ; boot it
+    sty  buflo      ; zero out block numbers and buffer address
     sty  blklo
     sty  blkhi
     iny
     sty  command
 
+    lda  #$60
+    sta  knownRts
     jsr  knownRts   ; call known RTS to get high byte to call address from stack
     tsx
     lda  $0100,x
@@ -55,19 +56,18 @@ boot:
     lda  #$FA        ; set register A control mode to 2
     sta  $BFFB,x     ; write to 82C55 mode register (mode 2 reg A, mode 0 reg B)
 
-    ldy	 #<msg
+    ldy  #<msg
 writemsg:
-    lda	 (buflo),y
-    beq  dowait
+    lda  (buflo),y
+    beq  waitkey
     sta	 $6D0-<msg,y
     iny
     bne  writemsg
 
-dowait:
-    ldy  #10
+                    ; y is approximately $ff here
 waitkey:
-    lda  #0         ; wait a little
-	jsr  $fca8      ; do the wait
+    lda  #$40       ; wait a little
+    jsr  $fca8      ; do the wait
     lda  $c000      ; do we have a key
     bpl  nokey
     sta  $c010
@@ -83,10 +83,12 @@ pushadr:
     lda  #$08       ; push return address on stack
     sta  bufhi
     pha
-    lda  #$00
+    tya             ; y = 0 from waitkey
     pha
 
 start:
+    lda  #$60
+    sta  knownRts
     jsr  knownRts   ; call known RTS to get high byte to call address from stack
     tsx
     lda  $0100,x
@@ -132,7 +134,7 @@ noerror:
     bne  notstatus   ; not a status command
     
     ldx  #$FF        ; report $FFFF blocks 
-    ldy  #$FF   
+    dey              ; y = 0 to y = $ff
     clc
     rts
     
@@ -155,6 +157,7 @@ readbytes:
 exit512:
     dec  bufhi       ; quit with no error
 quitok:
+    ldx  unit
     lda  #$00
     clc
     rts                   
@@ -183,7 +186,7 @@ waitwrite:
 .endrep
 .endmacro
 
-msg:   aschi   "DAN ][ PRESS ENTER"
+msg:   aschi   "DAN ][ PRESS RTN"
 endmsg:
 .byte    0
 
@@ -195,7 +198,7 @@ endmsg:
 .endrepeat
 
 .byte   $00,$00  ;0000 blocks = check status
-.byte   $A7      ;bit 0=read 1=status
+.byte   $BF      ;status,read,write,format,2 volumes,removable
 .byte  <start    ;low byte of entry
 
 ; this starts at $c700, page 2
@@ -215,7 +218,7 @@ badpage:
 writecard1msg:
     lda	 (buflo),y
     beq  getcard1key
-    sta	 $750-<msg,y
+    sta	 $750-<card1msg,y
     iny
     bne  writecard1msg
 
@@ -242,7 +245,7 @@ storevol1:
 writecard2msg:
     lda	 (buflo),y
     beq  getcard2key
-    sta	 $7D0-<msg,y
+    sta	 $7D0-<card2msg,y
     iny
     bne  writecard2msg
 insidejump:
@@ -260,8 +263,6 @@ getcard2key:
     and  #$0f
     sta  blkhi
 
-    lda  #$fa
-    sta  $BFFB,x     ; write to 82C55 mode register (mode 2 reg A, mode 0 reg B)
     lda  #4          ; set command=4
     sta  command
 
