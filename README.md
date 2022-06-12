@@ -9,12 +9,20 @@ The gerbers for the PCB are in the Apple2Card directly can be made by JLCPCB or 
 The jumpers do the following:
 
 JP1:  allows the ICSP connector to power the ATMEGA328P when flashing when closed.
+
 JP2:  close to enable paging the ROM memory when booting.
+
 JP3:  close to enable paging the ROM memory when booting.
+
 JP4:  close to enable paging the ROM memory when booting.
+
 JP5:  separates the Arduino power from the rest of the card so that the ICSP can power the ATMEGA328P without powering the entire Apple II when open.
 
-The J1 connector is the ICSP connector for programming the ATMEGA32P.  The J2 and J3 connector break out the bus pins of the Apple II.  The J4 connect are the extra pins of the 82C55 broken out onto a connector.  The J5 connector is for debugging.  The J6 connector is for a Wiznet 5500 SPI ethernet controller (similar to Uthernet).  This has not been implemented yet.
+The J1 connector is the ICSP connector for programming the ATMEGA32P.
+The J2 and J3 connector break out the bus pins of the Apple II.
+The J4 connect are the extra pins of the 82C55 broken out onto a connector.
+The J5 connector is for debugging.
+The J6 connector is for a Wiznet 5500 SPI ethernet controller (similar to Uthernet).  This has not been implemented yet.
 
 To prepare SD cards to be used with storage, you can do it two ways:
 
