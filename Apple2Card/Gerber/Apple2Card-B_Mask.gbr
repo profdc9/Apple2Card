@@ -1,12 +1,12 @@
 G04 #@! TF.GenerationSoftware,KiCad,Pcbnew,(6.0.2)*
-G04 #@! TF.CreationDate,2022-06-13T15:48:59-05:00*
+G04 #@! TF.CreationDate,2022-06-13T18:17:33-05:00*
 G04 #@! TF.ProjectId,Apple2Card,4170706c-6532-4436-9172-642e6b696361,rev?*
 G04 #@! TF.SameCoordinates,Original*
 G04 #@! TF.FileFunction,Soldermask,Bot*
 G04 #@! TF.FilePolarity,Negative*
 %FSLAX46Y46*%
 G04 Gerber Fmt 4.6, Leading zero omitted, Abs format (unit mm)*
-G04 Created by KiCad (PCBNEW (6.0.2)) date 2022-06-13 15:48:59*
+G04 Created by KiCad (PCBNEW (6.0.2)) date 2022-06-13 18:17:33*
 %MOMM*%
 %LPD*%
 G01*
@@ -434,9 +434,11 @@ D12*
 X113330000Y-39070000D03*
 D13*
 X113330000Y-41610000D03*
-X153325000Y-57070000D03*
 D12*
 X155865000Y-57070000D03*
+D13*
+X153325000Y-57070000D03*
+D12*
 X95970000Y-31210000D03*
 D13*
 X98510000Y-31210000D03*
