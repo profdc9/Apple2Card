@@ -32,7 +32,7 @@ To prepare SD cards to be used with storage, you can do it two ways:
 
 The first mode is raw block mode on the SD card.  To use raw block mode, find the "Blankvols.zip" file in the firmware directory.  Unzip this file, and the resulting "Blankvols.PO" file is 512 MB in length.  This can be written to a SD card using an utility such as Win32DiskImager or "dd" under linux.  This is 16 concatenated prepared ProDOS volumes.  Place this in SLOT1 of the card.
 
-The second mode is FAT filesystem mode on the SD card.  A ProDOS order disk image of 32 megabytes can be copied onto the SD card and used.  Such an image is already provided as the file "SingleBlankVol.zip" which is a 32 MB file once unzipped.  Place this file into into the root directory as a file "BLKDEV0X.PO" where X is a digit between 1 and 9.  The default is "1" so for simplicity name it "BLKDEV01.PO".
+The second mode is FAT filesystem mode on the SD card.  A ProDOS order disk image of 32 megabytes can be copied onto the SD card and used.  Such an image is already provided as the file "SingleBlankVol.zip" which is a 32 MB file once unzipped.  Place this file into into the root directory as a file "BLKDEV0X.PO" where X is a digit between 1 and 9.  The default is "1" so for simplicity name it "BLKDEV01.PO".  The ProDOS disk images can be read/written by software such as CiderPress ( https://a2ciderpress.com/ ) so that you can use this to transfer files to and from the Apple II.  Files can be copied onto the ProDOS disk image partition which can then be read/written by CiderPress and transferred to other media.
 
 To make a volume bootable, copy the "PRODOS.SYSTEM" and other system files to be started on booting, for example "BASIC.SYSTEM".
 
