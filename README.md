@@ -1,6 +1,6 @@
 # Apple II Storage Interface and Arduino Inteface
 
-![Apple2Card](pics/picver.jpg)
+![Apple2Card](pics/picver1.jpg)
 
 This is a simple card that provides two SD cards as mass storage devices to ProDOS as well as will provide networking using a Wiznet W5500.  A ATMEGA328P programmed using the Arduino development environment is interfaced to the Apple II bus using a 82C55 peripheral interface.  The design uses only five commonly available integrated circuits, the 74HCT08 AND gate, 74HCT32 OR gate, 82C55A peripheral interface, a 28C256 flash memory chip, and a ATMEGA328P microcontroller, and so should be reasonably future-proofed as much as any design for a 40 year old computer can be.
 
