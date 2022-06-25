@@ -44,7 +44,7 @@ freely, subject to the following restrictions:
 #define DATAPORT_MODE_RECEIVE() do { PORTD = 0x00; DDRD = 0x00; } while (0)
 
 #define READ_DATAPORT() (PIND)
-#define WRITE_DATAPORT(x) PORTD=(x)
+#define WRITE_DATAPORT(x) do { uint8_t temp = (x); PORTD=temp; PORTD=temp; } while (0)
 
 #define READ_OBFA() (PINC & 0x08)
 #define READ_IBFA() (PINC & 0x02)
@@ -54,9 +54,9 @@ freely, subject to the following restrictions:
 #define STB_HIGH_SINGLE() PORTC |= _BV(0)
 
 /* Needed to slow down data send for 82C55 */
-#define ACK_LOW() do { ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); } while (0)
+#define ACK_LOW() do { ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); ACK_LOW_SINGLE(); } while (0)
 #define ACK_HIGH() do { ACK_HIGH_SINGLE();  } while (0)
-#define STB_LOW() do { STB_LOW_SINGLE(); STB_LOW_SINGLE(); STB_LOW_SINGLE(); STB_LOW_SINGLE(); } while (0)
+#define STB_LOW() do { STB_LOW_SINGLE(); STB_LOW_SINGLE(); STB_LOW_SINGLE(); STB_LOW_SINGLE(); STB_LOW_SINGLE(); } while (0)
 #define STB_HIGH() do { STB_HIGH_SINGLE(); } while (0)
 
 #define INITIALIZE_CONTROL_PORT() do { \

@@ -27,6 +27,7 @@ freely, subject to the following restrictions:
 */
 
 #include <Arduino.h>
+#include <EEPROM.h>
 #include "diskio.h"
 #include "mmc_avr.h"
 #include "ff.h"
@@ -40,6 +41,10 @@ SoftwareSerial softSerial(SOFTWARE_SERIAL_RX,SOFTWARE_SERIAL_TX);
 #define SERIALPORT() (&softSerial)
 #endif
 
+#define EEPROM_INIT 0
+#define EEPROM_SLOT0 1
+#define EEPROM_SLOT1 2
+
 #define SLOT_STATE_NODEV 0
 #define SLOT_STATE_BLOCKDEV 1
 #define SLOT_STATE_WIDEDEV 2
@@ -49,10 +54,10 @@ FATFS   fs;
 FIL     slotfile;
 
 uint8_t slot0_state = SLOT_STATE_NODEV;
-uint8_t slot0_fileno = 0;
+uint8_t slot0_fileno;
 
 uint8_t slot1_state = SLOT_STATE_NODEV;
-uint8_t slot1_fileno = 1;
+uint8_t slot1_fileno;
 
 extern "C" {
   void write_string(const char *c)
@@ -62,6 +67,29 @@ extern "C" {
     SERIALPORT()->flush();
 #endif
   }
+}
+
+void read_eeprom(void)
+{
+  if (EEPROM.read(EEPROM_INIT) != 255)
+  {
+    slot0_fileno = EEPROM.read(EEPROM_SLOT0);
+    slot1_fileno = EEPROM.read(EEPROM_SLOT1);
+  } else
+  {
+    slot0_fileno = 0;
+    slot1_fileno = 1;
+  }
+}
+
+void write_eeprom(void)
+{
+  if (EEPROM.read(EEPROM_SLOT0) != slot0_fileno)
+    EEPROM.write(EEPROM_SLOT0, slot0_fileno);
+  if (EEPROM.read(EEPROM_SLOT1) != slot1_fileno)
+    EEPROM.write(EEPROM_SLOT1, slot1_fileno);
+  if (EEPROM.read(EEPROM_INIT) == 255)
+    EEPROM.write(EEPROM_INIT, 0);
 }
 
 void setup_pins(void)
@@ -433,6 +461,7 @@ void do_set_volume(void)
   unmount_drive();
   slot0_fileno = blk & 0xFF;
   slot1_fileno = (blk >> 8);
+  write_eeprom();
   unit = 0;
   check_status();
   unit = 0x80;
@@ -476,6 +505,7 @@ void setup()
 {
   setup_pins();
   setup_serial();
+  read_eeprom();
 
   unit = 0;
   check_status();
