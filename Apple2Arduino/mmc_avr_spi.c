@@ -87,11 +87,12 @@ void power_on (void)
 static
 void power_off (void)
 {
-
+#if 0
 	cli();
 	SPCR = 0;
 	DDRB &= ~0x3F;
 	sei(); 
+#endif
 }
 
 /*-----------------------------------------------------------------------*/
