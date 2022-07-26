@@ -1,8 +1,8 @@
 
 ;temp variables becasue 6502 only has 3 registers
-   uppage = $FE
+   uppage = $FD
 ;for relocatable code, address to jump to instead of JSR absolute + RTS
-    knownRts   = $FF
+    knownRtsMonitor = $FF58
 
 ;ProDOS defines
   command = $42   ;ProDOS command
@@ -37,9 +37,7 @@ boot:
     iny
     sty  command
 
-    lda  #$60
-    sta  knownRts
-    jsr  knownRts   ; call known RTS to get high byte to call address from stack
+    jsr  knownRtsMonitor   ; call known RTS to get high byte to call address from stack
     tsx
     lda  $0100,x
     sta  bufhi      ; address of beginning of rom 
@@ -88,8 +86,8 @@ pushadr:
 
 start:
     lda  #$60
-    sta  knownRts
-    jsr  knownRts   ; call known RTS to get high byte to call address from stack
+    sta  uppage
+    jsr  uppage      ; call known RTS to get high byte to call address from stack
     tsx
     lda  $0100,x
     asl  a

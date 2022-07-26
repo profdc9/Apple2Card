@@ -4,19 +4,7 @@
 
 This is a simple card that provides two SD cards as mass storage devices to ProDOS as well as will provide networking using a Wiznet W5500.  A ATMEGA328P programmed using the Arduino development environment is interfaced to the Apple II bus using a 82C55 peripheral interface.  The design uses only five commonly available integrated circuits, the 74HCT08 AND gate, 74HCT32 OR gate, 82C55A peripheral interface, a 28C256 flash memory chip, and a ATMEGA328P microcontroller, and so should be reasonably future-proofed as much as any design for a 40 year old computer can be.
 
-The gerbers for the PCB are in the Apple2Card directly can be made by JLCPCB or PCBway, for example.  The firmware is the "Firmware.bin" file in the Apple2Card directory.  It is a 512 byte file that can be burned onto a 27C128/28C256 flash memory chip using a programmer such as a TL866 plus ii.  Only the first 512 bytes are used of this memory.  The firmware for the ATMEGA328P is the Apple2Arduino sketch in the Apple2Arduino directly. It should be flashed onto the ATMEGA328P chip without a bootloader.  No SD cards should be present in the SD card slots when the ATMEGA328P is flashed if the ICSP connector on the card is used.  
-
-The jumpers do the following:
-
-JP1:  allows the ICSP connector to power the ATMEGA328P when flashing when closed.
-
-JP2:  close to enable paging the ROM memory when booting.
-
-JP3:  close to enable paging the ROM memory when booting.
-
-JP4:  close to enable paging the ROM memory when booting.
-
-JP5:  separates the Arduino power from the rest of the card so that the ICSP can power the ATMEGA328P without powering the entire Apple II when open.
+The gerbers for the PCB are in the Apple2Card directly can be made by JLCPCB or PCBway, for example.  The firmware is the "Firmware.bin" file in the Apple2Card directory.  It is a 512 byte file that can be burned onto a 27C128/28C256 flash memory chip using a programmer such as a TL866 plus ii.  Only the first 512 bytes are used of this memory.  The firmware for the ATMEGA328P is the Apple2Arduino sketch in the Apple2Arduino directory.  It should be uploaded using a programmer, however, the bootloader needs to be uploaded first. It should be flashed onto the ATMEGA328P chip without a bootloader.  No SD cards should be present in the SD card slots when the ATMEGA328P is flashed if the ICSP connector on the card is used.  There is a program called FLASH.SYSTEM which can flash the ATMEGA328P on the board.  Follow the instructions in the program on which jumpers should be closed while flashing.
 
 The J1 connector is the ICSP connector for programming the ATMEGA32P.
 
