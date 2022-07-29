@@ -33,7 +33,12 @@ freely, subject to the following restrictions:
 #include "ff.h"
 #include "pindefs.h"
 
+#define USE_ETHERNET
 #undef DEBUG_SERIAL
+
+#ifdef USE_ETHERNET
+#include "w5500.h"
+#endif
 
 #ifdef DEBUG_SERIAL
 #include <SoftwareSerial.h>
@@ -49,6 +54,11 @@ SoftwareSerial softSerial(SOFTWARE_SERIAL_RX,SOFTWARE_SERIAL_TX);
 #define SLOT_STATE_BLOCKDEV 1
 #define SLOT_STATE_WIDEDEV 2
 #define SLOT_STATE_FILEDEV 3
+
+#ifdef USE_ETHERNET
+uint8_t ethernet_initialized = 0;
+Wiznet5500 eth(8);
+#endif
 
 FATFS   fs;
 FIL     slotfile;
@@ -469,6 +479,86 @@ void do_set_volume(void)
   write_dataport(0x00);
 }
 
+#ifdef USE_ETHERNET
+void do_initialize_ethernet(void)
+{
+  uint8_t mac_address[6];
+#ifdef DEBUG_SERIAL
+  SERIALPORT()->println("initialize ethernet");
+#endif
+  for (uint8_t i=0;i<6;i++)
+  {
+    mac_address[i] = read_dataport();
+#ifdef DEBUG_SERIAL
+    SERIALPORT()->print(mac_address[i],HEX);
+    SERIALPORT()->print(" ");    
+#endif
+  }
+  if (ethernet_initialized)
+    eth.end();
+  if (eth.begin(mac_address))
+  {
+#ifdef DEBUG_SERIAL
+    SERIALPORT()->println("initialized");
+#endif
+    ethernet_initialized = 1;
+    write_dataport(0);   
+    return 0;
+  }
+#ifdef DEBUG_SERIAL
+    SERIALPORT()->println("not initialized");
+#endif
+  ethernet_initialized = 0;
+  write_dataport(1);   
+  return 1;
+}
+
+void do_poll_ethernet(void)
+{
+  uint16_t len;
+#ifdef DEBUG_SERIAL
+   SERIALPORT()->println("poll eth");
+#endif
+   if (ethernet_initialized)
+   {
+      len = read_dataport();
+      len |= ((uint16_t)read_dataport()) << 8;
+#ifdef DEBUG_SERIAL
+   SERIALPORT()->print("read len ");
+   SERIALPORT()->println(len,HEX);
+#endif
+      len = eth.readFrame(NULL,len);
+#ifdef DEBUG_SERIAL
+   SERIALPORT()->print("recv len ");
+   SERIALPORT()->println(len,HEX);
+#endif
+   } else
+   {
+     write_dataport(0);   
+     write_dataport(0);   
+   }
+}
+
+void do_send_ethernet(void)
+{
+  uint16_t len;
+#ifdef DEBUG_SERIAL
+   SERIALPORT()->println("send eth");
+#endif
+  if (ethernet_initialized)
+  {
+    len = read_dataport();
+    len |= ((uint16_t)read_dataport()) << 8;
+#ifdef DEBUG_SERIAL
+   SERIALPORT()->print("len ");
+   SERIALPORT()->println(len,HEX);
+#endif
+    eth.sendFrame(NULL,len);
+  }
+  write_dataport(0); 
+}
+#endif
+
 void do_command()
 {
   uint8_t cmd = read_dataport();
@@ -478,19 +568,26 @@ void do_command()
 #endif
   switch (cmd)
   {
-    case 0:  do_status();
-             break;
-    case 1:  do_read();
-             break;
-    case 2:  do_write();
-             break;
-    case 3:  do_format();
-             break;
-    case 4:  do_set_volume();
-             break;
-
-    default: write_dataport(0x27);
-             break;
+    case 0:    do_status();
+               break;
+    case 1:    do_read();
+               break;
+    case 2:    do_write();
+               break;
+    case 3:    do_format();
+               break;
+    case 4:    do_set_volume();
+               break;
+#ifdef USE_ETHERNET
+    case 0x10: do_initialize_ethernet();
+               break;
+    case 0x11: do_poll_ethernet();
+               break;
+    case 0x12: do_send_ethernet();
+               break;
+#endif
+    default:   write_dataport(0x27);
+               break;
   }
 }
 

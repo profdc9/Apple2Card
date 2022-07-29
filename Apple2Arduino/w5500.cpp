@@ -346,6 +346,20 @@ void Wiznet5500::end()
     while(getSn_SR() != SOCK_CLOSED);
 }
 
+static void write_length(uint16_t data_len)
+{
+  DATAPORT_MODE_TRANS();
+  while (READ_IBFA() != 0);
+  WRITE_DATAPORT(data_len & 0xFF);
+  STB_LOW();
+  STB_HIGH();
+  while (READ_IBFA() != 0);
+  WRITE_DATAPORT(data_len >> 8);
+  STB_LOW();
+  STB_HIGH();
+  DATAPORT_MODE_RECEIVE();
+}
+
 uint16_t Wiznet5500::readFrame(uint8_t *buffer, uint16_t bufsize)
 {
     uint16_t len = getSn_RX_RSR();
@@ -365,6 +379,7 @@ uint16_t Wiznet5500::readFrame(uint8_t *buffer, uint16_t bufsize)
         if (data_len > bufsize)
         {
             // Packet is bigger than buffer - drop the packet
+            write_length(0);
             wizchip_recv_ignore(data_len);
             setSn_CR(Sn_CR_RECV);
             return 0;
@@ -372,22 +387,13 @@ uint16_t Wiznet5500::readFrame(uint8_t *buffer, uint16_t bufsize)
 
 #ifdef PINDEFS
         if (buffer == NULL)
-        {
-          DATAPORT_MODE_TRANS();
-          while (READ_IBFA() != 0);
-          WRITE_DATAPORT(data_len & 0xFF);
-          STB_LOW();
-          STB_HIGH();
-          while (READ_IBFA() != 0);
-          WRITE_DATAPORT(data_len >> 8);
-          STB_LOW();
-          STB_HIGH();
-          DATAPORT_MODE_RECEIVE();
-        }
+          write_length(data_len);
 #endif
         wizchip_recv_data(buffer, data_len);
         setSn_CR(Sn_CR_RECV);
-
+#if 1
+        return;
+#else
         // Had problems with W5500 MAC address filtering (the Sn_MR_MFEN option)
         // Do it in software instead:
         if ((buffer[0] & 0x01) || memcmp(&buffer[0], _mac_address, 6) == 0)
@@ -397,8 +403,11 @@ uint16_t Wiznet5500::readFrame(uint8_t *buffer, uint16_t bufsize)
         } else {
             return 0;
         }
+#endif
     }
-
+#ifdef PINDEFS
+    write_length(0);
+#endif
     return 0;
 }
 

@@ -60,10 +60,10 @@ freely, subject to the following restrictions:
 #define STB_HIGH() do { STB_HIGH_SINGLE(); } while (0)
 
 #define INITIALIZE_CONTROL_PORT() do { \
-  PORTC |= (_BV(0) | _BV(2)); \
+  PORTC |= (_BV(0) | _BV(1) | _BV(2) | _BV(3)); \
   DDRC |= (_BV(0) | _BV(2)); \
   DDRC &= ~(_BV(1) | _BV(3)); \
-  PORTC |= (_BV(0) | _BV(2)); \
+  PORTC |= (_BV(0) | _BV(1) | _BV(2) | _BV(3)); \
 } while (0) 
 
 #endif _PINDEFS_H
