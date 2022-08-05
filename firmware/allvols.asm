@@ -206,7 +206,7 @@ addslot:
   lsr  a
   lsr  a
   clc
-  adc  #128+48
+  adc  #128+49
   jsr  outch
   lda  #' '+128
   jsr  outch
