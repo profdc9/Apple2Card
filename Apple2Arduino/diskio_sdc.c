@@ -8,7 +8,7 @@
 /*-----------------------------------------------------------------------*/
 
 #include "ff.h"			/* Obtains integer types for FatFs */
-#include "diskio.h"		/* FatFs lower layer API */
+#include "diskio_sdc.h"		/* FatFs lower layer API */
 #include "mmc_avr.h"	/* Header file of existing SD control module */
 
 
@@ -90,7 +90,3 @@ DRESULT disk_ioctl (
 	return mmc_disk_ioctl(cmd, buff);
 }
 #endif
-
-
-
-

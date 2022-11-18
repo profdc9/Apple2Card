@@ -13,7 +13,7 @@
 
 #include <Arduino.h>
 #include <avr/io.h>
-#include "diskio.h"
+#include "diskio_sdc.h"
 #include "mmc_avr.h"
 #include "pindefs.h"
 

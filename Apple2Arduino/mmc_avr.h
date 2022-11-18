@@ -6,7 +6,7 @@
 #define _MMC_DEFINED
 
 //#include "ff.h"
-#include "diskio.h"
+#include "diskio_sdc.h"
 
 #ifdef __cplusplus
 extern "C" {

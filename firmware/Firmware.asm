@@ -3,6 +3,8 @@
    uppage = $FD
 ;for relocatable code, address to jump to instead of JSR absolute + RTS
     knownRtsMonitor = $FF58
+    sloop = $faba
+    waitloop = $fca8
 
 ;ProDOS defines
   command = $42   ;ProDOS command
@@ -28,6 +30,8 @@ idbytes:
     ldx  #$3C    ;this one for older II's
     bne  boot
 jumpbank:
+    lda  #1      ; jump to other bank
+anybank:
     sta  $bffb,x ; this is called to switch between rom banks
 boot:
     ldy  #0         ; boot it
@@ -61,18 +65,22 @@ writemsg:
     sta	 $6D0-<msg,y
     iny
     bne  writemsg
-
+bootslot:
+    jmp  sloop
                     ; y is approximately $ff here
 waitkey:
     lda  #$40       ; wait a little
-    jsr  $fca8      ; do the wait
+    jsr  waitloop   ; do the wait
     lda  $c000      ; do we have a key
     bpl  nokey
     sta  $c010
+    cmp  #27+128    ; see if its an esc key
+    beq  bootslot
     cmp  #13+128    ; see if its an enter key
+    beq  jumpbank   ; go to configuration page
+    cmp  #32+128    ; see if space is pressed
     bne  nokey
-    lda  #1         ; change ROM bank address line 1
-    bne  jumpbank 
+    sta  command
 nokey:
     dey
     bne  waitkey
@@ -137,32 +145,8 @@ noerror:
     rts
     
 notstatus:
-    cmp  #$01     
-    bne  notread     ; not a read command
-readbytes:
-    lda  $BFFA,x     ; wait until there's a byte available
-    and  #$20
-    beq  readbytes
-    lda  $BFF8,x     ; get the byte
-    sta  (buflo),y   ; store in the buffer
-    iny            
-    bne  readbytes   ; get next byte to 256 bytes
-    ldy  uppage
-    bne  exit512     ; already read upper page
-    inc  bufhi
-    inc  uppage
-    bne  readbytes
-exit512:
-    dec  bufhi       ; quit with no error
-quitok:
-    ldx  unit
-    lda  #$00
-    clc
-    rts                   
-     
-notread:              
-    cmp  #$02         ; assume its an allowed format if not these others
-    bne  quitok 
+    cmp  #$02     
+    bne  readbytes    ; not a write command
 writebytes:
     lda  (buflo),y    ; write a byte to the Arduino
     sta  $BFF8,x      
@@ -176,6 +160,28 @@ waitwrite:
     inc  bufhi
     inc  uppage
     bne  writebytes
+exit512:
+    dec  bufhi       ; quit with no error
+quitok:
+    ldx  unit
+    lda  #$00
+    clc
+    rts                   
+
+; assume read command
+readbytes:
+    lda  $BFFA,x     ; wait until there's a byte available
+    and  #$20
+    beq  readbytes
+    lda  $BFF8,x     ; get the byte
+    sta  (buflo),y   ; store in the buffer
+    iny            
+    bne  readbytes   ; get next byte to 256 bytes
+    ldy  uppage
+    bne  exit512     ; already read upper page
+    inc  bufhi
+    inc  uppage
+    bne  readbytes
     
 ;macro for string with high-bit set
 .macro aschi str
@@ -186,6 +192,7 @@ waitwrite:
 
 msg:   aschi   "DAN ][ PRESS RTN"
 endmsg:
+
 .byte    0
 
 ; These bytes need to be at the top of the 256 byte firmware as ProDOS
@@ -196,7 +203,7 @@ endmsg:
 .endrepeat
 
 .byte   $00,$00  ;0000 blocks = check status
-.byte   $BF      ;status,read,write,format,2 volumes,removable
+.byte   $B7      ;status,read,write,no format,2 volumes,removable
 .byte  <start    ;low byte of entry
 
 ; this starts at $c700, page 2
@@ -209,6 +216,7 @@ page2:
     ldx  #$3C    ; this one for older II's
     bne  badpage ; why are we booting to this page?
 jumpbank2:
+    lda  #0      ; jump back to the original bank
     sta  $bffb,x ; this is called to switch between rom banks
 
 badpage:
