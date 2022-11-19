@@ -63,12 +63,19 @@ Wiznet5500 eth(8);
 
 FATFS   fs;
 FIL     slotfile;
+uint8_t last_drive = 255;
 
 uint8_t slot0_state = SLOT_STATE_NODEV;
 uint8_t slot0_fileno;
 
 uint8_t slot1_state = SLOT_STATE_NODEV;
 uint8_t slot1_fileno;
+
+static char blockvolzero[] = "0:";
+static char blockvolone[] = "1:";
+
+static char blockdev0_filename[] = "0:BLKDEVXX.PO";
+static char blockdev1_filename[] = "1:BLKDEVXX.PO";
 
 extern "C" {
   void write_string(const char *c)
@@ -169,24 +176,19 @@ void get_unit_buf_blk(void)
 #endif
 }
 
-static char blockvolzero[] = "0:";
-static char blockvolone[] = "1:";
-
-static char blockdev_filename[] = "X:BLKDEVXX.PO";
-
 uint8_t hex_digit(uint8_t ch)
 {
   if (ch < 10) return ch + '0';
   return ch - 10 + 'A';
 }
 
-void set_blockdev_filename(uint8_t fileno)
+void set_blockdev_filename(char *blockdev_filename, uint8_t fileno)
 {
   blockdev_filename[8] = hex_digit(fileno >> 4);
   blockdev_filename[9] = hex_digit(fileno & 0x0F);
 }
 
-void check_status(void)
+void initialize_drive(void)
 {
   if (unit & 0x80)
   {
@@ -205,18 +207,8 @@ void check_status(void)
           slot1_state = SLOT_STATE_BLOCKDEV;
       } else 
       {
-        if (slot0_state != SLOT_STATE_FILEDEV)
-        {
-          if (f_mount(&fs,blockvolone,0) == FR_OK)
-          {
-            set_blockdev_filename(slot1_fileno);
-            blockdev_filename[0] = '1';
-            if (f_open(&slotfile, blockdev_filename, FA_READ | FA_WRITE) == FR_OK)
-            {
-              slot1_state = SLOT_STATE_FILEDEV;
-            } 
-          }
-        }
+        set_blockdev_filename(blockdev1_filename, slot1_fileno);
+        slot1_state = SLOT_STATE_FILEDEV;
       }
     }
   } else
@@ -236,19 +228,35 @@ void check_status(void)
           slot0_state = SLOT_STATE_BLOCKDEV;
       } else
       {
-        if (slot1_state != SLOT_STATE_FILEDEV)
-        {
-          if (f_mount(&fs,blockvolzero,0) == FR_OK)
-          {
-            set_blockdev_filename(slot0_fileno);
-            blockdev_filename[0] = '0';
-            if (f_open(&slotfile, blockdev_filename, FA_READ | FA_WRITE) == FR_OK)
-              slot0_state = SLOT_STATE_FILEDEV;
-          }
-        }
+        set_blockdev_filename(blockdev0_filename, slot0_fileno);
+        slot0_state = SLOT_STATE_FILEDEV;
       }
     }
   }
+}
+
+uint8_t check_change_filesystem(uint8_t current_filesystem)
+{
+  if (last_drive == current_filesystem)
+    return 1;
+
+  if (last_drive < 2)
+  {
+    f_close(&slotfile);
+    f_unmount(last_drive == 0 ? blockvolzero : blockvolone);
+  }
+  last_drive = current_filesystem;
+  if (last_drive < 2)
+  {
+    if (f_mount(&fs, last_drive == 0 ? blockvolzero : blockvolone, 0) != FR_OK)
+      return 0;
+    if (f_open(&slotfile, last_drive == 0 ? blockdev0_filename : blockdev1_filename, FA_READ | FA_WRITE) != FR_OK)
+    {
+      f_unmount(last_drive == 0 ? blockvolzero : blockvolone);
+      return 0;
+    }
+  }
+  return 1;
 }
 
 void unmount_drive(void)
@@ -264,8 +272,7 @@ void unmount_drive(void)
          slot1_state = SLOT_STATE_NODEV;
          return;
       case SLOT_STATE_FILEDEV:
-         f_close(&slotfile);
-         f_unmount(blockvolone);
+         check_change_filesystem(255);
          slot1_state = SLOT_STATE_NODEV;
          return;
     }
@@ -280,8 +287,7 @@ void unmount_drive(void)
          slot0_state = SLOT_STATE_NODEV;
          return;
       case SLOT_STATE_FILEDEV:
-         f_close(&slotfile);
-         f_unmount(blockvolzero);
+         check_change_filesystem(255);
          slot0_state = SLOT_STATE_NODEV;
          return;
     }  
@@ -311,7 +317,6 @@ uint8_t check_unit_nodev(void)
 void do_status(void)
 {
   get_unit_buf_blk();
-  check_status();
   if (check_unit_nodev())
      write_dataport(0x00);
 }
@@ -335,7 +340,6 @@ void do_read(void)
   uint8_t buf[512];
   
   get_unit_buf_blk();
-  check_status();
   if (check_unit_nodev() == 0) return;
   if (unit & 0x80)
   {
@@ -351,6 +355,11 @@ void do_read(void)
            }
            break;
       case SLOT_STATE_FILEDEV:
+           if (!check_change_filesystem(1))
+           {
+               write_dataport(0x27);
+               return;
+           }
            calculate_file_location();
            if ((f_lseek(&slotfile, blockloc) != FR_OK) ||
                (f_read(&slotfile, buf, 512, &br) != FR_OK) ||
@@ -375,6 +384,11 @@ void do_read(void)
            }
            break;
       case SLOT_STATE_FILEDEV:
+           if (!check_change_filesystem(0))
+           {
+               write_dataport(0x27);
+               return;
+           }
            calculate_file_location();
            if ((f_lseek(&slotfile, blockloc) != FR_OK) ||
                (f_read(&slotfile, buf, 512, &br) != FR_OK) ||
@@ -404,8 +418,6 @@ void do_write(void)
   uint8_t buf[512];
   
   get_unit_buf_blk();
-  check_status();
-
   if (check_unit_nodev() == 0) return;
   write_dataport(0x00);            
 
@@ -427,6 +439,8 @@ void do_write(void)
            disk_write(slot1_state == SLOT_STATE_BLOCKDEV ? 1 : 0, buf, blockloc, 1);
            break;
       case SLOT_STATE_FILEDEV:
+           if (!check_change_filesystem(1))
+               return;
            calculate_file_location();
            if ((f_lseek(&slotfile, blockloc) != FR_OK) ||
                (f_write(&slotfile, buf, 512, &br) != FR_OK) ||
@@ -444,6 +458,8 @@ void do_write(void)
            disk_write(0, buf, blockloc, 1);
            break;
       case SLOT_STATE_FILEDEV:
+           if (!check_change_filesystem(0))
+               return;
            calculate_file_location();
            if ((f_lseek(&slotfile, blockloc) != FR_OK) ||
                (f_write(&slotfile, buf, 512, &br) != FR_OK) ||
@@ -458,7 +474,6 @@ void do_write(void)
 void do_format(void)
 {
   get_unit_buf_blk();
-  check_status();
   if (check_unit_nodev() == 0) return;
   write_dataport(0x00);
 }
@@ -474,9 +489,9 @@ void do_set_volume(void)
   slot1_fileno = (blk >> 8);
   write_eeprom();
   unit = 0;
-  check_status();
+  initialize_drive();
   unit = 0x80;
-  check_status();
+  initialize_drive();
   write_dataport(0x00);
 }
 
@@ -658,9 +673,9 @@ void setup()
   read_eeprom();
 
   unit = 0;
-  check_status();
+  initialize_drive();
   unit = 0x80;
-  check_status();
+  initialize_drive();
 
 #ifdef DEBUG_SERIAL
   SERIALPORT()->println("0000");
