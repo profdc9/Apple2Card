@@ -480,6 +480,14 @@ void do_set_volume(void)
   write_dataport(0x00);
 }
 
+void do_get_volume(void)
+{
+  get_unit_buf_blk();
+  write_dataport(0x00);
+  write_dataport(slot0_fileno);
+  write_dataport(slot1_fileno);
+}
+
 #ifdef USE_ETHERNET
 void do_initialize_ethernet(void)
 {
@@ -616,6 +624,8 @@ void do_command()
     case 3:    do_format();
                break;
     case 4:    do_set_volume();
+               break;
+    case 5:    do_get_volume();
                break;
 #ifdef USE_ETHERNET
     case 0x10: do_initialize_ethernet();
