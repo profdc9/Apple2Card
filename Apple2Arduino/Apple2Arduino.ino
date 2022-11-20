@@ -501,6 +501,15 @@ void do_get_volume(void)
   write_dataport(0x00);
   write_dataport(slot0_fileno);
   write_dataport(slot1_fileno);
+  DATAPORT_MODE_TRANS();
+  for (uint16_t i=0;i<510;i++)
+  {
+     while (READ_IBFA() != 0);
+     WRITE_DATAPORT(0x00);
+     STB_LOW();
+     STB_HIGH(); 
+  }
+  DATAPORT_MODE_RECEIVE();  
 }
 
 #ifdef USE_ETHERNET
