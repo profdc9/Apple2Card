@@ -478,7 +478,21 @@ void do_format(void)
   write_dataport(0x00);
 }
 
-void do_set_volume(void)
+void write_zeros(uint8_t num)
+{
+  DATAPORT_MODE_TRANS();
+  while (num > 0)
+  {
+     while (READ_IBFA() != 0);
+     WRITE_DATAPORT(0x00);
+     STB_LOW();
+     STB_HIGH(); 
+     num--;
+  }
+  DATAPORT_MODE_RECEIVE();    
+}
+
+void do_set_volume(uint8_t cmd)
 {
   get_unit_buf_blk();
   unit = 0;
@@ -493,6 +507,7 @@ void do_set_volume(void)
   unit = 0x80;
   initialize_drive();
   write_dataport(0x00);
+  if (cmd == 6) write_zeros(512);
 }
 
 void do_get_volume(void)
@@ -501,15 +516,7 @@ void do_get_volume(void)
   write_dataport(0x00);
   write_dataport(slot0_fileno);
   write_dataport(slot1_fileno);
-  DATAPORT_MODE_TRANS();
-  for (uint16_t i=0;i<510;i++)
-  {
-     while (READ_IBFA() != 0);
-     WRITE_DATAPORT(0x00);
-     STB_LOW();
-     STB_HIGH(); 
-  }
-  DATAPORT_MODE_RECEIVE();  
+  write_zeros(510);
 }
 
 #ifdef USE_ETHERNET
@@ -647,7 +654,8 @@ void do_command()
                break;
     case 3:    do_format();
                break;
-    case 4:    do_set_volume();
+    case 4:    
+    case 6:    do_set_volume(cmd);
                break;
     case 5:    do_get_volume();
                break;
