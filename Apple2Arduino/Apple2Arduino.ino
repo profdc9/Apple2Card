@@ -64,6 +64,7 @@ Wiznet5500 eth(8);
 FATFS   fs;
 FIL     slotfile;
 uint8_t last_drive = 255;
+uint8_t last_drive_ok = 0;
 
 uint8_t slot0_state = SLOT_STATE_NODEV;
 uint8_t slot0_fileno;
@@ -238,7 +239,7 @@ void initialize_drive(void)
 uint8_t check_change_filesystem(uint8_t current_filesystem)
 {
   if (last_drive == current_filesystem)
-    return 1;
+    return last_drive_ok; // return the known last status of the current drive
 
   if (last_drive < 2)
   {
@@ -246,6 +247,7 @@ uint8_t check_change_filesystem(uint8_t current_filesystem)
     f_unmount(last_drive == 0 ? blockvolzero : blockvolone);
   }
   last_drive = current_filesystem;
+  last_drive_ok = 0;
   if (last_drive < 2)
   {
     if (f_mount(&fs, last_drive == 0 ? blockvolzero : blockvolone, 0) != FR_OK)
@@ -256,6 +258,7 @@ uint8_t check_change_filesystem(uint8_t current_filesystem)
       return 0;
     }
   }
+  last_drive_ok = 1;  // currently selected drive is ok
   return 1;
 }
 
