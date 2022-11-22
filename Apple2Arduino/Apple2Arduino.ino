@@ -500,19 +500,19 @@ void write_zeros(uint16_t num)
 void do_set_volume(uint8_t cmd)
 {
   get_unit_buf_blk();
-  unit = 0;
-  unmount_drive();
   unit = 0x80;
+  unmount_drive();
+  unit = 0x0;
   unmount_drive();
   slot0_fileno = blk & 0xFF;
   slot1_fileno = (blk >> 8);
-  write_eeprom();
-  unit = 0;
-  initialize_drive();
+  if (cmd != 6) write_eeprom();
   unit = 0x80;
   initialize_drive();
+  unit = 0x0;
+  initialize_drive();
   write_dataport(0x00);
-  if (cmd == 6) write_zeros(512);
+  if (cmd != 4) write_zeros(512);
 }
 
 void do_get_volume(void)
@@ -660,7 +660,8 @@ void do_command()
     case 3:    do_format();
       break;
     case 4:
-    case 6:    do_set_volume(cmd);
+    case 6:
+    case 7:    do_set_volume(cmd);
       break;
     case 5:    do_get_volume();
       break;
