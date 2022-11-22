@@ -183,6 +183,7 @@ DSPEC:
 
 DISPNAME:
          LDX #0
+         BCS NOHEADER    ; didn't read a sector
          LDA BLKBUF+5    ; if greater than $80 not a valid ASCII
          BMI NOHEADER
          LDA BLKBUF+4    ; look at volume directory header byte
@@ -212,7 +213,7 @@ NOHEADER:
 MSGS:
 
 NOHDR:     
-         ASCHI   "<NO NAME>"
+         ASCHI   "<NO VOLUME>"
 NOHDRE:
 .BYTE 0
 
@@ -254,8 +255,7 @@ READB:
          STA BLKLO
          LDA #$00
          STA BLKHI
-         JSR INSTRUC
-         RTS
+         JMP INSTRUC
 
 SETVOLW: LDA #$07        ; set volume but write to EEPROM
          BNE SETVOLC
@@ -268,8 +268,7 @@ SETVOLC:
          STA BLKLO
          LDA VOLDRIVE1
          STA BLKHI
-         JSR INSTRUC
-         RTS
+         JMP INSTRUC
 
 GETVOL:
          LDA #$05        ; read block

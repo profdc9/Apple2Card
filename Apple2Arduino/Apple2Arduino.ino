@@ -322,7 +322,7 @@ uint8_t check_unit_nodev(void)
 void do_status(void)
 {
   get_unit_buf_blk();
-  if (!check_unit_nodev())
+  if (check_unit_nodev())
     write_dataport(0x00);
 }
 
@@ -674,10 +674,9 @@ void do_command()
       break;
 #endif
     case 13+128:
-    case 32+128:
-      do_send_bootblock();
+    case 32+128:  do_send_bootblock();
       break;
-    default:   write_dataport(0x27);
+    default:      write_dataport(0x27);
       break;
   }
 }
