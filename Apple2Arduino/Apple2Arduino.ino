@@ -483,7 +483,7 @@ void do_format(void)
   write_dataport(0x00);
 }
 
-void write_zeros(uint8_t num)
+void write_zeros(uint16_t num)
 {
   DATAPORT_MODE_TRANS();
   while (num > 0)
@@ -492,6 +492,7 @@ void write_zeros(uint8_t num)
     WRITE_DATAPORT(0x00);
     STB_LOW();
     STB_HIGH();
+    num--;
   }
   DATAPORT_MODE_RECEIVE();
 }

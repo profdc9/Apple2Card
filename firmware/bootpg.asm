@@ -18,7 +18,16 @@ BUFHI   = $45
 BLKLO   = $46
 BLKHI   = $47
 
-START    LDA #$20        ; store JSR at $F0
+HOME =   $FC58
+PRHEX =  $FDE3
+PRBYTE = $FDDA
+RDKEY =  $FD0C
+
+         .ORG $2000
+		 
+START:
+         LDX #$70
+         LDA #$20        ; store JSR at $F0
          STA INSTRUC
          LDA #$60        ; store RTS at $F3
          STA RTSBYT
@@ -36,15 +45,26 @@ START    LDA #$20        ; store JSR at $F0
          DEY             ; make zero a $FF
          LDA (LOWBT),Y   ; get low byte of address
          STA LOWBT       ; place at low byte
-         ...
 
-BUFLOC   LDA #<BLKBUF    ; store buffer location    
+         JSR HOME        ; clear screen
+         JSR GETVOL      ; get volume number
+         LDA VOLDRIVE0
+         JSR PRBYTE
+         LDA VOLDRIVE1
+         JSR PRBYTE
+         JSR RDKEY
+         JSR RDKEY
+         JMP REBOOT
+
+BUFLOC:
+         LDA #<BLKBUF    ; store buffer location    
          STA BUFLO
          LDA #>BLKBUF
          STA BUFHI
          RTS
 
-READB    LDA #$01        ; read block
+READB:
+         LDA #$01        ; read block
          STA COMMAND     ; store at $42
          JSR BUFLOC      ; store buffer location
          LDA #$04        ; which block (in this example $0004)
@@ -54,7 +74,8 @@ READB    LDA #$01        ; read block
          JSR INSTRUC
          RTS
 
-SETVOL   LDA #$06        ; set volume (alternate code)
+SETVOL:
+         LDA #$06        ; set volume (alternate code)
          STA COMMAND
          JSR BUFLOC      ; dummy buffer location
          LDA VOLDRIVE0
@@ -64,7 +85,8 @@ SETVOL   LDA #$06        ; set volume (alternate code)
          JSR INSTRUC
          RTS
 
-GETVOL   LDA #$05        ; read block
+GETVOL:
+         LDA #$05        ; read block
          STA COMMAND     ; store at $42
          JSR BUFLOC      ; store buffer location
          JSR INSTRUC
@@ -74,7 +96,7 @@ GETVOL   LDA #$05        ; read block
          STA VOLDRIVE1
          RTS
 
-       
-REBOOT   LDA #$00        ; store zero byte at $F1
+REBOOT:
+         LDA #$00        ; store zero byte at $F1
          STA LOWBT
          JMP (LOWBT)     ; jump back and reboot       
