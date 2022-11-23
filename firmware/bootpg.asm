@@ -30,9 +30,10 @@ RDKEY =  $FD0C
 COUT  =  $FDED
 VTAB =   $FC22
 
-         .ORG $2000
-		 
+         .ORG $800
+
 START:
+         NOP
          LDX #$70
          LDA #$20        ; store JSR at $F0
          STA INSTRUC
