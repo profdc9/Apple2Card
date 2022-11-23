@@ -158,7 +158,7 @@ NOLOWER:
          CMP #'A'+128
          BCC NOLET
          CMP #'F'+128+1
-         BCS ISLET
+         BCC ISLET
 NOLET:   CMP #'0'+128
          BCC GETHEX
          CMP #'9'+128+1
