@@ -29,18 +29,18 @@ PRBYTE = $FDDA
 RDKEY =  $FD0C
 COUT  =  $FDED
 VTAB =   $FC22
+SETVID = $FE93
+SETKBD = $FE89
 
          .ORG $800
 
 START:
          NOP
-         LDX #$70
-         LDA #$20        ; store JSR at $F0
+         LDA #$20
          STA INSTRUC
          LDA #$60        ; store RTS at $F3
          STA RTSBYT
-         STX UNIT        ; store in unit number
-         TXA             ; put unit in A register
+         LDA UNIT        ; put unit in A register
          LSR A           ; shift to lower nibble
          LSR A
          LSR A
@@ -54,6 +54,8 @@ START:
          LDA (LOWBT),Y   ; get low byte of address
          STA LOWBT       ; place at low byte
 
+         JSR SETVID      ; set to IN#0/PR#0 just in case
+         JSR SETKBD
          JSR HOME        ; clear screen
          JSR GETVOL      ; get volume number
 
@@ -180,7 +182,6 @@ DVHEX:   CMP #$FF
 DSPEC: 
          LDA #'!'+128
          JMP COUT
-         RTS
 
 DISPNAME:
          LDX #0
@@ -193,6 +194,7 @@ DISPNAME:
          BNE NOHEADER
          LDA BLKBUF+4
          AND #$0F
+         BEQ NOHEADER
          STA LENGTH
 DISPL:
          LDA BLKBUF+5,X
@@ -219,7 +221,7 @@ NOHDRE:
 .BYTE 0
 
 CARDMSG:     
-         ASCHI   "CARD 0:"
+         ASCHI   "CARD 1:"
 CARDMSGE:
 .BYTE 0
 
@@ -229,7 +231,7 @@ VOLSEL:
 VOLSELE:
 .BYTE 0
 
-CARDMS1: LDA #'1'+128
+CARDMS1: LDA #'2'+128
          STA CARDMSG+5
 CARDMS0:
          LDX #(CARDMSG-MSGS)
