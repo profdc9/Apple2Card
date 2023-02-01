@@ -392,7 +392,7 @@ uint16_t Wiznet5500::readFrame(uint8_t *buffer, uint16_t bufsize)
         wizchip_recv_data(buffer, data_len);
         setSn_CR(Sn_CR_RECV);
 #if 1
-        return;
+        return data_len;
 #else
         // Had problems with W5500 MAC address filtering (the Sn_MR_MFEN option)
         // Do it in software instead:
