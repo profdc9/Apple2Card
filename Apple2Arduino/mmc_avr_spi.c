@@ -316,18 +316,29 @@ BYTE send_cmd (		/* Returns R1 resp (bit7==1:Send failed) */
 
 DSTATUS mmc_disk_initialize (void)
 {
-	BYTE n, cmd, ty, ocr[4];
+	BYTE n, cmd, ty, isidle, ocr[4];
 
+#if 0 // power_off is not implemented anyway, so we neither need the voltage drain delay
 	power_off();						/* Turn off the socket power to reset the card */
 	delay(100);
+#endif
 	if (Stat[slotno] & STA_NODISK) return Stat[slotno];	/* No card in the socket? */
 
 	power_on();							/* Turn on the socket power */
 	FCLK_SLOW();
- for (n = 10; n; n--) xchg_spi(0xFF);	/* 80 dummy clocks */
+	for (n = 10; n; n--) xchg_spi(0xFF);	/* 80 dummy clocks */
+
+	/* send CMD0="GO IDLE" command to reset the SD card. Since we haven't done a physical reset,
+	 hence, we don't know its current state, we may need to repeat & briefly wait
+	 until the card confirms to be idle. */
+	n=5;
+	do
+	{
+		isidle = send_cmd(CMD0, 0);	// send "GO IDLE" command to reset the card
+	} while ((isidle==0)&&(--n));	// wait/retry if card responds with 0==not idle (yet)
 
 	ty = 0;
-	if (send_cmd(CMD0, 0) == 1) {			/* Put the card SPI mode */
+	if (isidle == 1) {			/* Card is idle now. Now put the card in SPI mode. */
 	    uint16_t intime = millis(), curtime;
       
 		if (send_cmd(CMD8, 0x1AA) == 1) {	/* Is the card SDv2? */
@@ -362,6 +373,7 @@ DSTATUS mmc_disk_initialize (void)
 		FCLK_FAST();
 	} else {			/* Initialization failed */
 		power_off();
+		Stat[slotno] |= STA_NOINIT; /* init failed, consider this card no longer initialized */
 	}
     PULLUP_OFF();
 	return Stat[slotno];
